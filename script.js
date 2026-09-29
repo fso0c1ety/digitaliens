@@ -126,7 +126,9 @@ const camera =
 camera.position.set(
     0,
     0,
-    7
+    /* The 3× model has depth as well as width; keep the camera outside
+       its bounding box so it remains visible. */
+    27
 );
 
 
@@ -421,6 +423,13 @@ loader.load(
                 );
 
 
+        /* Frame the solid UFO body, not its long transparent light beam.
+           The beam otherwise moves the body into the camera. */
+        const ufoBody = mothership.getObjectByName("Test_Default OBJ_0");
+        const framingBox = ufoBody
+            ? new THREE.Box3().setFromObject(ufoBody)
+            : box;
+
         const size =
             new THREE.Vector3();
 
@@ -429,9 +438,9 @@ loader.load(
             new THREE.Vector3();
 
 
-        box.getSize(size);
+        framingBox.getSize(size);
 
-        box.getCenter(center);
+        framingBox.getCenter(center);
 
 
 
@@ -446,30 +455,16 @@ loader.load(
            CENTER MODEL
         ================================================== */
 
-        mothership.position.x =
-            -center.x;
-
-
-        mothership.position.y =
-            -center.y;
-
-
-        mothership.position.z =
-            -center.z;
-
-        modelOffset.copy(mothership.position);
-
-
-
         /* =================================================
            SCALE MODEL
         ================================================== */
 
+        /* The new GLB includes a long light beam on the Z axis. Do not use
+           its depth to size the ship, otherwise the visible UFO is tiny. */
         const largestDimension =
             Math.max(
                 size.x,
-                size.y,
-                size.z
+                size.y
             );
 
 
@@ -478,8 +473,9 @@ loader.load(
            you want the UFO larger/smaller.
         */
 
+        /* Fit the visible ship comfortably inside the canvas height. */
         const desiredSize =
-            4.8;
+            17.5;
 
 
         const scale =
@@ -490,6 +486,14 @@ loader.load(
         mothership.scale.setScalar(
             scale
         );
+
+
+        /* Centre after scaling. A root position that is calculated before
+           scaling puts models whose origin is offset outside the camera. */
+        mothership.position.copy(center).multiplyScalar(-scale);
+        modelOffset.copy(mothership.position);
+        modelOffset.y += 0.8;
+        mothership.position.copy(modelOffset);
 
 
 
@@ -525,18 +529,12 @@ loader.load(
                         : [object.material];
 
                     materials.filter(Boolean).forEach((material) => {
-                        /* Remove only the dark diffuse texture. Keep the
-                           remaining material detail maps for a clean finish. */
-                        material.map = null;
-                        material.color.set(0xffffff);
-
-                        if (material.emissive) {
-                            material.emissive.set(0x000000);
-                        }
-
+                        /* Keep the new model's own colours and texture maps.
+                           The prior UFO-specific white override made this
+                           model blend into the light page background. */
                         if (material.emissiveMap) {
                             material.emissiveMap.colorSpace = THREE.SRGBColorSpace;
-                            material.emissiveIntensity = 0.45;
+                            material.emissiveIntensity = 0.8;
                         }
 
                         material.needsUpdate = true;
